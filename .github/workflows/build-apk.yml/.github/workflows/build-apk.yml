@@ -1,0 +1,55 @@
+name: Build Senerita Eats APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract project
+        run: |
+          mkdir project
+
+          ZIP=$(find . -maxdepth 1 -type f -iname 'SeneritaEats*.zip' | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "ERROR: Senerita Eats ZIP not found"
+            ls -la
+            exit 1
+          fi
+
+          echo "Using ZIP: $ZIP"
+          unzip -q "$ZIP" -d project
+
+          GRADLEW=$(find project -name gradlew -type f | head -n 1)
+
+          if [ -z "$GRADLEW" ]; then
+            echo "ERROR: gradlew not found"
+            find project -maxdepth 3 -type f | head -100
+            exit 1
+          fi
+
+          chmod +x "$GRADLEW"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build APK
+        run: |
+          GRADLEW=$(find project -name gradlew -type f | head -n 1)
+          cd "$(dirname "$GRADLEW")"
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Senerita-Eats-APK
+          path: project/**/app/build/outputs/apk/debug/app-debug.apk
